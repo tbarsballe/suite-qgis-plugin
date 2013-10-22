@@ -108,15 +108,12 @@ class PgConnectionItem(PgTreeItem):
         if self.element.isValid:            
             icon = QtGui.QIcon(os.path.dirname(__file__) + "/../images/add.png")
             newSchemaAction = QtGui.QAction(icon, "New schema...", explorer)
-            newSchemaAction.triggered.connect(lambda: self.newSchema(explorer))
-            icon = QtGui.QIcon(os.path.dirname(__file__) + "/../images/sql_window.png")  
-            sqlAction = QtGui.QAction(icon, "Run SQL...", explorer)
-            sqlAction.triggered.connect(self.runSql)     
+            newSchemaAction.triggered.connect(lambda: self.newSchema(explorer)) 
             icon = QtGui.QIcon(os.path.dirname(__file__) + "/../images/postgis_import.png") 
             importAction = QtGui.QAction(icon, "Import files...", explorer)
             importAction.setEnabled(self.childCount() != 0)
             importAction.triggered.connect(lambda: self.importIntoDatabase(explorer))                                        
-            actions.extend([newSchemaAction, sqlAction, importAction])        
+            actions.extend([newSchemaAction, importAction])        
         return actions
         
     def _getDescriptionHtml(self, tree, explorer):  
@@ -145,15 +142,17 @@ class PgConnectionItem(PgTreeItem):
                     files.append(uri.uri)                  
             dlg = ImportIntoPostGISDialog(explorer.pgDatabases(), self.element, toImport = files)
             dlg.exec_()
-            if dlg.ok:           
-                explorer.setProgressMaximum(len(dlg.toImport), "Import layers into PostGIS")
+            if dlg.ok:        
+                if len(dlg.toImport) > 1:   
+                    explorer.setProgressMaximum(len(dlg.toImport), "Import layers into PostGIS")
                 for i, filename in enumerate(dlg.toImport):
                     explorer.setProgress(i)
                     explorer.run(self.element.importFileOrLayer,
-                                None, 
+                                "Import into PostGIS database",
                                 [],
                                 filename, dlg.schema, dlg.tablename, not dlg.add)
-                explorer.resetActivity()        
+                if len(dlg.toImport) > 1:
+                    explorer.resetActivity()        
                 return [self]
             return []
         else:
@@ -206,10 +205,7 @@ class PgConnectionItem(PgTreeItem):
                             [],
                             filename, dlg.schema, dlg.tablename, not dlg.add)
             explorer.resetActivity()
-        self.refreshContent(explorer)
-          
-    def runSql(self):
-        pass
+        self.refreshContent(explorer)        
     
     def newSchema(self, explorer):            
         text, ok = QtGui.QInputDialog.getText(explorer, "Schema name", "Enter name for new schema", text="schema")
@@ -312,7 +308,7 @@ class PgSchemaItem(PgTreeItem):
                 for i, filename in enumerate(dlg.toImport):
                     explorer.setProgress(i)
                     if not explorer.run(self.element.conn.importFileOrLayer, 
-                                        None, 
+                                        "Import into PostGIS schema",
                                         [],
                                         filename, dlg.schema, dlg.tablename, not dlg.add):
                         break
