@@ -20,7 +20,6 @@ from opengeo.qgis.sldadapter import adaptGsToQgs,\
     getGsCompatibleSld
 from opengeo.qgis import uri as uri_utils
 from opengeo.qgis.utils import tempFilename
-from opengeo.geoserver.importerclient import Client
 
 try:
     from processing.modeler.ModelerAlgorithm import ModelerAlgorithm
@@ -50,8 +49,6 @@ class OGCatalog(object):
     
     def __init__(self, catalog):
         self.catalog = catalog
-        #we also create a Client object pointing to the same url        
-        self.client = Client(str(catalog.service_url), catalog.username, catalog.password)
         
     def clean(self):
         self.cleanUnusedStyles()
@@ -174,19 +171,14 @@ class OGCatalog(object):
         name = name if name is not None else layer.name()
                     
         try:
-            settings = QSettings()
-            restApi = bool(settings.value("/OpenGeo/Settings/GeoServer/UseRestApi", True, bool))   
-            restApi = True # importer api is disabled for now         
+            settings = QSettings()                    
             if layer.type() == layer.RasterLayer:                
                 path = self.getDataFromLayer(layer)
-                if restApi:
-                    self.catalog.create_coveragestore(name,
-                                              path,
-                                              workspace=workspace,
-                                              overwrite=overwrite)                            
-                else:                    
-                    session = self.client.upload(path)
-                    session.commit()      
+                self.catalog.create_coveragestore(name,
+                                          path,
+                                          workspace=workspace,
+                                          overwrite=overwrite)                            
+            
                 
             elif layer.type() == layer.VectorLayer:
                 provider = layer.dataProvider()
@@ -204,16 +196,11 @@ class OGCatalog(object):
                                            passwd = uri.password())  
                     self.catalog.create_pg_featuretype(uri.table(), connName, workspace, layer.crs().authid())
                 else:   
-                    path = self.getDataFromLayer(layer)
-                    if restApi:                    
-                        self.catalog.create_shp_featurestore(name,
-                                              path,
-                                              workspace=workspace,
-                                              overwrite=overwrite)
-                    else:
-                        shpFile = path['shp']                        
-                        session = self.client.upload(shpFile)
-                        session.commit()                          
+                    path = self.getDataFromLayer(layer)                                
+                    self.catalog.create_shp_featurestore(name,
+                                          path,
+                                          workspace=workspace,
+                                          overwrite=overwrite)                                              
                     
             else:
                 msg = layer.name() + ' is not a valid raster or vector layer'
