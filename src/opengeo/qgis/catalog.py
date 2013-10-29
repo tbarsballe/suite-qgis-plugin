@@ -131,11 +131,13 @@ class OGCatalog(object):
         Publishes the style of a given layer style in the specified catalog. If the overwrite parameter is True, 
         it will overwrite a style with that name in case it exists
         '''        
+        
         if isinstance(layer, basestring):
             layer = layers.resolveLayer(layer)         
         sld = getGsCompatibleSld(layer) 
         if sld is not None:       
-            name = name if name is not None else layer.name()            
+            name = name if name is not None else layer.name()
+            name = name.replace(" ", "_")            
             self.catalog.create_style(name, sld, overwrite)
         return sld
        
@@ -167,8 +169,10 @@ class OGCatalog(object):
               
         if isinstance(layer, basestring):
             layer = layers.resolveLayer(layer)     
-            
+                    
         name = name if name is not None else layer.name()
+        title = name
+        name = name.replace(" ", "_")
                     
         try:
             settings = QSettings()                    
@@ -228,7 +232,10 @@ class OGCatalog(object):
         else:
             msg = ('could not create layer %s.' % name)
             raise Exception(msg)
-       
+        
+        if title != name:
+            resource.dirty["title"] = title
+            self.catalog.save(resource)
         if resource.latlon_bbox is None:
             box = resource.native_bbox[:4]
             minx, maxx, miny, maxy = [float(a) for a in box]
@@ -315,13 +322,16 @@ class OGCatalog(object):
         
         if isinstance(layer, basestring):
             layer = layers.resolveLayer(layer)    
-        
+                
         name = name if name is not None else layer.name()
+        title = name
+        name = name.replace(" ", "_")        
           
         sld = self.publishStyle(layer, overwrite, name)
             
         layer = self.preprocess(layer)            
-        self.upload(layer, workspace, overwrite, name)  
+        self.upload(layer, workspace, overwrite, title)
+          
 
         if sld is not None:
             #assign style to created store  
