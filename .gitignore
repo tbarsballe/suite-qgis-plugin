@@ -4,3 +4,5 @@
 /src/build.xml
 /doc/build
 *.pyc
+ext_libs
+test-output/
