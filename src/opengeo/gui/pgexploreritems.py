@@ -150,7 +150,7 @@ class PgConnectionItem(PgTreeItem):
                     explorer.run(self.element.importFileOrLayer,
                                 "Import into PostGIS database",
                                 [],
-                                filename, dlg.schema, dlg.tablename, not dlg.add)
+                                filename, dlg.schema, dlg.tablename, not dlg.add, dlg.single)
                 if len(dlg.toImport) > 1:
                     explorer.resetActivity()        
                 return [self]
@@ -178,7 +178,7 @@ class PgConnectionItem(PgTreeItem):
                     if not explorer.run(self.element.importFileOrLayer, 
                                         None, 
                                         [],
-                                        layer, dlg.schema, dlg.tablename, not dlg.add):
+                                        layer, dlg.schema, dlg.tablename, not dlg.add, dlg.single):
                         break
                 explorer.resetActivity()
                 toUpdate.add(self)
@@ -203,7 +203,7 @@ class PgConnectionItem(PgTreeItem):
                 explorer.run(self.element.importFileOrLayer, 
                             None, 
                             [],
-                            filename, dlg.schema, dlg.tablename, not dlg.add)
+                            filename, dlg.schema, dlg.tablename, not dlg.add, dlg.single)
             explorer.resetActivity()
         self.refreshContent(explorer)        
     
@@ -260,7 +260,7 @@ class PgSchemaItem(PgTreeItem):
                 explorer.run(self.element.conn.importFileOrLayer, 
                             None, 
                             [],
-                            filename, dlg.schema, dlg.tablename, not dlg.add)
+                            filename, dlg.schema, dlg.tablename, not dlg.add, dlg.single)
             explorer.resetActivity()
         self.refreshContent(explorer)
         
@@ -310,7 +310,7 @@ class PgSchemaItem(PgTreeItem):
                     if not explorer.run(self.element.conn.importFileOrLayer, 
                                         "Import into PostGIS schema",
                                         [],
-                                        filename, dlg.schema, dlg.tablename, not dlg.add):
+                                        filename, dlg.schema, dlg.tablename, not dlg.add, dlg.single):
                         break
                 explorer.resetActivity()                       
                 return [self]
@@ -336,7 +336,7 @@ class PgSchemaItem(PgTreeItem):
                     if not explorer.run(self.element.conn.importFileOrLayer, 
                                         None, 
                                         [],
-                                        layer, dlg.schema, dlg.tablename, not dlg.add):
+                                        layer, dlg.schema, dlg.tablename, not dlg.add, dlg.single):
                         break                                            
                 explorer.resetActivity()
                 toUpdate.add(self)
@@ -405,7 +405,7 @@ class PgTableItem(PgTreeItem):
                 if not explorer.run(self.element.conn.importFileOrLayer, 
                             "Import into PostGIS table", 
                             [],
-                            layer, self.element.schema, self.element.name, False):
+                            layer, self.element.schema, self.element.name, False, False):
                     break
                 
             explorer.resetActivity()
@@ -427,7 +427,7 @@ class PgTableItem(PgTreeItem):
                 if not explorer.run(self.element.conn.importFileOrLayer, 
                                    "Import into PostGIS table", 
                                     [],
-                                    filename, self.element.schema, self.element.name, False):
+                                    filename, self.element.schema, self.element.name, False, False):
                     break     
             explorer.resetActivity()                       
         return []    
@@ -447,10 +447,11 @@ class PgTableItem(PgTreeItem):
             explorer.setProgressMaximum(len(items), "Delete tables")
         toUpdate = set()
         for i, item in enumerate(items):                      
-            explorer.run(item.element.conn.geodb.delete_table, 
+            if not explorer.run(item.element.conn.geodb.delete_table, 
                           "Delete PostGIS table", 
                           [], 
-                          item.element.name, item.element.schema)
+                          item.element.name, item.element.schema):
+                break
             toUpdate.add(item.parent())
             explorer.setProgress(i+1)
         explorer.resetActivity()
