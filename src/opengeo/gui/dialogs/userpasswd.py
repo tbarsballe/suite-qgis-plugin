@@ -2,9 +2,9 @@ from PyQt4 import QtGui, QtCore
 
 class UserPasswdDialog(QtGui.QDialog):
     
-    def __init__(self, parent = None):
+    def __init__(self, user=None, parent = None):
         super(UserPasswdDialog, self).__init__(parent)
-        self.user = None
+        self.user = user
         self.passwd = None
         self.initGui()        
         

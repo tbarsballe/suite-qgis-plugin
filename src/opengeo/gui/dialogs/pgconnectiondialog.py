@@ -81,7 +81,7 @@ class NewPgConnectionDialog(QDialog):
         usernameLabel = QLabel('User name')
         usernameLabel.setMinimumWidth(150)
         self.usernameBox = QLineEdit()   
-        self.usernameBox.setText(settings.value('/OpenGeo/PostGIS/LastUserName', 'postgres'))
+        self.usernameBox.setText(settings.value('/OpenGeo/PostGIS/LastUserName', 'postgres', str))
         self.usernameBox.setMinimumWidth(250)          
         horizontalLayout.addWidget(usernameLabel)
         horizontalLayout.addWidget(self.usernameBox)

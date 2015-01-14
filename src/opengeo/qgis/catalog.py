@@ -10,9 +10,11 @@ and methods to interact with GIS objects
 '''
 
 import os
+import getpass
 from qgis.core import *
 from PyQt4.QtXml import *
 from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 from opengeo.qgis import layers, exporter, utils
 from geoserver.catalog import ConflictingDataError, UploadError, FailedRequestError
 from geoserver.catalog import Catalog as GSCatalog
@@ -22,6 +24,9 @@ from opengeo.qgis import uri as uri_utils
 from opengeo.qgis.utils import tempFilename
 from gsimporter.client import Client
 from opengeo.geoserver.pki import PKICatalog, PKIClient
+from opengeo.gui.gsnameutils import xmlNameFixUp, xmlNameRegex, xmlNameRegexMsg
+from opengeo.gui.dialogs.gsnamedialog import GSNameDialog
+from opengeo.gui.dialogs.userpasswd import UserPasswdDialog
 
 try:
     from processing.modeler.ModelerAlgorithm import ModelerAlgorithm
@@ -184,7 +189,8 @@ class OGCatalog(object):
                                      port = uri.port(),
                                      user = uri.username(),
                                      passwd = uri.password())
-        self.catalog.publish_featuretype(uri.table(), store, layer.crs().authid())
+        if store is not None:
+            self.catalog.publish_featuretype(uri.table(), store, layer.crs().authid())
 
 
     def _uploadRest(self, layer, workspace, overwrite, name):
@@ -482,25 +488,72 @@ class OGCatalog(object):
 
 def createPGFeatureStore(catalog, name, workspace=None, overwrite=False,
     host="localhost", port = 5432 , database="db", schema="public", user="postgres", passwd=""):
+    stores = []
+    try:
+        gsstores = catalog.get_stores(workspace)
+        if gsstores:
+            stores = [s.name for s in gsstores]
+    except FailedRequestError:
+        pass
+
+    ndlg = GSNameDialog(
+        nametitle='GeoServer data store name',
+        name=xmlNameFixUp(name),
+        namemsg='Sample is generated from PostgreSQL connection name.',
+        nameregex=xmlNameRegex(),
+        nameregexmsg=xmlNameRegexMsg(),
+        names=stores,
+        uniquename=(not overwrite),
+    )
+
+    QApplication.setOverrideCursor(QCursor(Qt.ArrowCursor))
+    res = ndlg.exec_()
+    QApplication.restoreOverrideCursor()
+
+    if res:
+        name = ndlg.definedName()
+    else:
+        return None
+
+    # GeoServer's PG connector apparently requires a username.
+    # Username is not required to be defined for a QGIS PG layer (e.g. user can
+    # rely upon PG's default). Username and/or password might be saved in QGIS,
+    # though the user has to choose the option to have them saved
+    if not user or (user and not passwd):
+        updlg = UserPasswdDialog(user=user)
+
+        QApplication.setOverrideCursor(QCursor(Qt.ArrowCursor))
+        res = updlg.exec_()
+        QApplication.restoreOverrideCursor()
+
+        if res:
+            user = updlg.user
+            passwd = updlg.passwd
+        else:
+            return None
+
     try:
         store = catalog.get_store(name, workspace)
     except FailedRequestError:
         store = None
-    if store is not None:
-        if overwrite:
-            #if the existing store is the same we are trying to add, we do nothing
-            params = store.connection_parameters
-            if (str(params['port']) == str(port) and params['database'] == database and params['host'] == host
-                    and params['user'] == user):
-                return store
+    if store is not None and overwrite:
+        # if the existing store is the same we are trying to add, we do nothing
+        params = store.connection_parameters
+        if (str(params['port']) == str(port)
+                and params['database'] == database
+                and params['host'] == host
+                and params['user'] == user):
+            return store
         else:
             msg = "There is already a store named " + name
             if workspace:
                 msg += " in " + str(workspace)
+            msg += ", but connection info is different"
             raise ConflictingDataError(msg)
 
     if store is None:
         store = catalog.create_datastore(name, workspace)
+
     store.connection_parameters.update(
         host=host, port=str(port), database=database, user=user, schema=schema,
         passwd=passwd, dbtype="postgis")
